@@ -1,5 +1,6 @@
 import logging
 import traceback
+import shutil
 
 from flask import Flask, request, jsonify
 import pandas as pd
@@ -56,14 +57,17 @@ def get_embeddings(text):
 
 @app.route('/update', methods=['GET'])
 def update():
-    if not client.collection_exists(collection_name=my_collection):
+
+
+    try:
+        #delete database folder
+        shutil.rmtree('./qdrant_data')
+        # Load data into Qdrant
         client.create_collection(
             collection_name=my_collection,
             vectors_config=models.VectorParams(size=1536, distance=models.Distance.COSINE)
         )
-        logger.info("Qdrant collection recreated.")
-    # Load data into Qdrant
-    try:
+        logger.info("Qdrant collection created.")
         df = pd.read_excel('input.xlsx')
         logger.info("Excel file loaded successfully.")
         for index, row in df.iterrows():
