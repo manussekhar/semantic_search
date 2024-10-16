@@ -15,6 +15,7 @@ from waitress import serve
 from dotenv import load_dotenv
 
 load_dotenv()
+
 JOB_NAME = 'Job Name'
 INCIDENT_ID = 'Incident ID'
 WORK_DETAILS = 'Work Details'
@@ -33,6 +34,29 @@ FLAG = 'Flag'
 MQ = 'MQ'
 JOB = 'job'
 DONE = 'done'
+
+collections = [
+    JOB_NAME,
+    INCIDENT_ID,
+    WORK_DETAILS,
+    NOTES,
+    SUMMARY,
+    REPORTED_DATE,
+    RESOLVED_DATE,
+    RESOLUTION,
+    SUBMIT_DATE,
+    SUBMITTER_NAME,
+    SUBMITTER,
+    STATUS,
+    ASSIGNEE,
+    ASSIGNED_GROUP,
+    FLAG,
+    MQ,
+    JOB,
+    DONE
+]
+# Initialize cache
+embeddings_cache = {}
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -59,18 +83,23 @@ setup_logging()
 
 # Initialize Qdrant client and collection
 
-my_collection = "polisy_collection"
 
 def get_embeddings(text):
     logger.info(f"Generating embeddings for text: {text}...")
+    if text in embeddings_cache:
+        logger.info("Returning cached embeddings.")
+        return embeddings_cache[text]
+
     try:
         oaclient = OpenAI()
         response = oaclient.embeddings.create(
             input=text,
             model="text-embedding-ada-002"
         )
-        logger.info("Embeddings generated successfully.")
-        return response.data[0].embedding
+        embeddings = response.data[0].embedding
+        embeddings_cache[text] = embeddings
+        logger.info("Embeddings generated and cached successfully.")
+        return embeddings
     except Exception as e:
         logger.error(f"Error generating embeddings: {e}")
         raise
@@ -92,39 +121,19 @@ def update():
         # Check if the directory exists before attempting to delete it
         if os.path.exists('./qdrant_data'):
             shutil.rmtree('./qdrant_data')
+
         client = QdrantClient(path="./qdrant_data")
-        # Load data into Qdrant
-        client.create_collection(
-            collection_name=my_collection,
-            vectors_config=models.VectorParams(size=1536, distance=models.Distance.COSINE)
-        )
-        logger.info("Qdrant collection created.")
+
+        for collection_name in collections:
+            create_collection(client, collection_name)
+
+
         df = pd.read_excel('./Data/polisy/Data.xlsx')
         logger.info("Excel file loaded successfully.")
         for index, row in df.iterrows():
             id = str(uuid.uuid4())
-            metadata = row['Notes']
-            json_string = row.to_json()
-            json_object = json.loads(json_string)
-
-            # Check if id or metadata is null or empty
-            if pd.isnull(id) or pd.isnull(metadata) or id == '' or metadata == '':
-                logger.warning(f"Skipping row {index} due to null or empty ID or METADATA.")
-                continue
-
-            embedding = get_embeddings(metadata)
-            logger.info(f"upserting data: {metadata[:30]}...")
-            client.upsert(
-                collection_name=my_collection,
-                points=[
-                    models.PointStruct(
-                        id=id,
-                        vector=embedding,
-                        payload=json_object
-                    )
-                ]
-            )
-            logger.info(f"Completed upserting data: {metadata[:30]}...")
+            for collection_name in collections:
+                insert(client, id, row, collection_name)
         logger.info("Data loaded successfully into Qdrant.")
         return jsonify({"message": "Data updated successfully"}), 200
     except Exception as e:
@@ -133,19 +142,52 @@ def update():
         return jsonify({"error": str(e)}), 500
 
 
+def insert(client, id, row, collection_name):
+    metadata = row[collection_name]
+    json_object = json.loads(row.to_json())
+    # Check if id or metadata is null or empty
+    if pd.isnull(metadata) or metadata == '':
+        logger.warning(f"Skipping row {index} due to null or empty ID or METADATA.")
+        return None
+    embedding = get_embeddings(metadata)
+    logger.info(f"upserting data: {metadata[:30]}...")
+    client.upsert(
+        collection_name=collection_name,
+        points=[
+            models.PointStruct(
+                id=id,
+                vector=embedding,
+                payload=json_object
+            )
+        ]
+    )
+    logger.info(f"Completed upserting data: {metadata[:30]}...")
+
+
+def create_collection(client, collection_name):
+    client.create_collection(
+        collection_name=collection_name,
+        vectors_config=models.VectorParams(size=1536, distance=models.Distance.COSINE)
+    )
+    logger.info(f"Qdrant collection created for {collection_name}.")
 
 @app.route('/search', methods=['GET'])
 def search():
     try:
-        query = request.args.get('q')
-        logger.info(f"Received search query: {query}")
-        if not query:
-            logger.warning("Query parameter 'q' is required.")
-            return jsonify({"error": "Query parameter 'q' is required"}), 400
+        query_params = request.args
+        logger.info(f"Received search query parameters: {query_params}")
+        collection_names = [key for key in query_params if key in collections]
+        if not collection_names:
+            logger.warning("query parameter is wrong.")
+            return jsonify({"error": "query parameter is wrong"}), 400
+
+        # Get the matching key and its value
+        collection_name = collection_names[0]
+        query = query_params[collection_name]
         query_vector = get_embeddings(query)
         client = QdrantClient(path="./qdrant_data")
         results = client.search(
-            collection_name=my_collection,
+            collection_name=collection_name,
             query_vector=query_vector,
             limit=20
         )
