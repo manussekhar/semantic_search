@@ -1,8 +1,7 @@
+from flask import Flask, request, jsonify, render_template
 import logging
 import traceback
 import shutil
-
-from flask import Flask, request, jsonify
 import pandas as pd
 from openai import OpenAI
 from qdrant_client import QdrantClient
@@ -15,7 +14,7 @@ load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-logger = logging.getLogger('sematic_search')
+logger = logging.getLogger('semantic_search')
 
 def setup_logging():
     # Configure logging
@@ -41,7 +40,7 @@ client = QdrantClient(path="./qdrant_data")
 my_collection = "first_collection"
 
 def get_embeddings(text):
-    logger.info(f"Generating embeddings for text: {text[:30]}...")  # Log the start of the embedding generation
+    logger.info(f"Generating embeddings for text: {text[:30]}...")
     try:
         oaclient = OpenAI()
         response = oaclient.embeddings.create(
@@ -54,6 +53,10 @@ def get_embeddings(text):
         logger.error(f"Error generating embeddings: {e}")
         raise
 
+# Route to serve the index.html file
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 @app.route('/update', methods=['GET'])
 def update():
@@ -129,6 +132,4 @@ def search():
 
 if __name__ == '__main__':
     logger.info("Starting semantic search app.")
-    #app.run(debug=True, use_reloader=False)
-    #app.run()
-    serve(app, host='0.0.0.0',port=5000)
+    serve(app, host='0.0.0.0', port=5000)

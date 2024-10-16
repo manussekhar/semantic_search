@@ -1,5 +1,4 @@
 .env
-qdrant_data/
 Pipfile.lock
 app.log
 .idea/
