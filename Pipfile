@@ -12,6 +12,7 @@ h2 = "*"
 gunicorn = "*"
 waitress = "*"
 python-dotenv = "*"
+openpyxl = "*"
 
 [dev-packages]
 

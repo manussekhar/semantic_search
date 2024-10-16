@@ -1,8 +1,12 @@
+import json
+import uuid
+
 from flask import Flask, request, jsonify, render_template, render_template_string
 import logging
 import traceback
 import shutil
 import pandas as pd
+import os
 from openai import OpenAI
 from qdrant_client import QdrantClient
 from qdrant_client import models
@@ -54,11 +58,11 @@ def setup_logging():
 setup_logging()
 
 # Initialize Qdrant client and collection
-client = QdrantClient(path="./qdrant_data")
+
 my_collection = "polisy_collection"
 
 def get_embeddings(text):
-    logger.info(f"Generating embeddings for text: {text[:30]}...")
+    logger.info(f"Generating embeddings for text: {text}...")
     try:
         oaclient = OpenAI()
         response = oaclient.embeddings.create(
@@ -85,19 +89,23 @@ def hello():
 @app.route('/update', methods=['GET'])
 def update():
     try:
-        #delete database folder
-        shutil.rmtree('./qdrant_data')
+        # Check if the directory exists before attempting to delete it
+        if os.path.exists('./qdrant_data'):
+            shutil.rmtree('./qdrant_data')
+        client = QdrantClient(path="./qdrant_data")
         # Load data into Qdrant
         client.create_collection(
             collection_name=my_collection,
             vectors_config=models.VectorParams(size=1536, distance=models.Distance.COSINE)
         )
         logger.info("Qdrant collection created.")
-        df = pd.read_excel('input.xlsx')
+        df = pd.read_excel('./Data/polisy/Data.xlsx')
         logger.info("Excel file loaded successfully.")
         for index, row in df.iterrows():
-            id = row['ID']
-            metadata = row['METADATA']
+            id = str(uuid.uuid4())
+            metadata = row['Notes']
+            json_string = row.to_json()
+            json_object = json.loads(json_string)
 
             # Check if id or metadata is null or empty
             if pd.isnull(id) or pd.isnull(metadata) or id == '' or metadata == '':
@@ -112,15 +120,17 @@ def update():
                     models.PointStruct(
                         id=id,
                         vector=embedding,
-                        payload={"data": metadata}
+                        payload=json_object
                     )
                 ]
             )
             logger.info(f"Completed upserting data: {metadata[:30]}...")
         logger.info("Data loaded successfully into Qdrant.")
+        return jsonify({"message": "Data updated successfully"}), 200
     except Exception as e:
         print(traceback.format_exc())
         logger.error(f"Error loading data: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 
@@ -132,8 +142,8 @@ def search():
         if not query:
             logger.warning("Query parameter 'q' is required.")
             return jsonify({"error": "Query parameter 'q' is required"}), 400
-
         query_vector = get_embeddings(query)
+        client = QdrantClient(path="./qdrant_data")
         results = client.search(
             collection_name=my_collection,
             query_vector=query_vector,

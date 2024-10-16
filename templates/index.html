@@ -4,9 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Semantic Search App</title>
+    <!-- Include HTMX from CDN -->
+    <script src="https://unpkg.com/htmx.org@1.9.2"></script>
 </head>
 <body>
     <h1>Welcome to the Semantic Search App</h1>
     <p>Use the search endpoint to query the system.</p>
+
+    <!-- HTMX Trigger: Button that loads a response from the server -->
+    <button hx-get="/hello" hx-target="#message" hx-swap="innerHTML">
+        Click me to get a message from the server
+    </button>
+
+    <!-- This div will be updated with the response from the server -->
+    <div id="message"></div>
 </body>
 </html>
