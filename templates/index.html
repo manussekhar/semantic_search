@@ -3,20 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Semantic Search App</title>
-    <!-- Include HTMX from CDN -->
-    <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+    <title>Incident semantic search App</title>
+    <!-- Include Materialize CSS and JavaScript from CDN -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            color: #000000;
+            position: relative;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            display: flex;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .container > * {
+            margin: 0 10px;
+        }
+        .header-text {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 18px;
+            color: #000000;
+        }
+        .results {
+            margin-top: 20px;
+            width: 80%;
+        }
+        table {
+            display: none; /* Initially hide the table */
+            border-collapse: collapse; /* Ensure borders are collapsed */
+        }
+        th, td {
+            border: 1px solid #cccccc; /* Add border to table cells */
+            padding: 10px;
+            text-align: left;
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Materialize components
+            M.AutoInit();
+
+            // Clear the text area on page reload
+            document.getElementById('searchBox').value = '';
+
+            document.getElementById('searchBox').addEventListener('input', function() {
+                if (this.value.trim() !== '') {
+                    document.getElementById('goButton').disabled = false;
+                } else {
+                    document.getElementById('goButton').disabled = true;
+                }
+            });
+
+            document.getElementById('goButton').addEventListener('click', function() {
+                const selectedOption = document.getElementById('dropdown').value;
+                const searchText = document.getElementById('searchBox').value;
+                const url = `/search?${selectedOption}=${encodeURIComponent(searchText)}`;
+
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        const tableBody = document.getElementById('resultsTable').querySelector('tbody');
+                        tableBody.innerHTML = '';
+
+                        data.forEach(item => {
+                            const row = document.createElement('tr');
+                            const columns = [
+                                'Incident ID', 'Job Name', 'Work Details', 'Notes', 'Summary',
+                                'Reported Date', 'Resolved Date', 'Resolution', 'Submit Date',
+                                'Submitter Name', 'Submitter', 'Status', 'Assignee',
+                                'Assigned Group', 'Flag', 'MQ', 'job', 'done'
+                            ];
+
+                            columns.forEach(column => {
+                                const cellValue = item[column] === null ? '' : item[column];
+                                const cell = document.createElement('td');
+                                cell.textContent = cellValue;
+                                if (column === 'Incident ID') {
+                                    cell.style.cursor = 'pointer';
+                                    cell.addEventListener('click', function() {
+                                        const tempInput = document.createElement('input');
+                                        document.body.appendChild(tempInput);
+                                        tempInput.value = this.textContent;
+                                        tempInput.select();
+                                        document.execCommand('copy');
+                                        tempInput.remove();
+                                        alert('Incident ID copied: ' + this.textContent);
+                                    });
+                                }
+                                row.appendChild(cell);
+                            });
+
+                            tableBody.appendChild(row);
+                        });
+
+                        // Show the table after data is loaded
+                        document.getElementById('resultsTable').style.display = 'table';
+                    });
+            });
+        });
+    </script>
 </head>
 <body>
-    <h1>Welcome to the Semantic Search App</h1>
-    <p>Use the search endpoint to query the system.</p>
-
-    <!-- HTMX Trigger: Button that loads a response from the server -->
-    <button hx-get="/hello" hx-target="#message" hx-swap="innerHTML">
-        Click me to get a message from the server
-    </button>
-
-    <!-- This div will be updated with the response from the server -->
-    <div id="message"></div>
+<div class="header-text">Incident semantic search</div>
+<div class="container">
+    <div class="input-field">
+        <select id="dropdown" class="browser-default">
+            <option value="Job Name">Job Name</option>
+            <option value="Incident ID">Incident ID</option>
+            <option value="Work Details">Work Details</option>
+            <option value="Notes">Notes</option>
+            <option value="Summary">Summary</option>
+            <option value="Reported Date">Reported Date</option>
+            <option value="Resolved Date">Resolved Date</option>
+            <option value="Resolution">Resolution</option>
+            <option value="Submit Date">Submit Date</option>
+            <option value="Submitter Name">Submitter Name</option>
+            <option value="Submitter">Submitter</option>
+            <option value="Status">Status</option>
+            <option value="Assignee">Assignee</option>
+            <option value="Assigned Group">Assigned Group</option>
+            <option value="Flag">Flag</option>
+            <option value="MQ">MQ</option>
+            <option value="job">job</option>
+            <option value="done">done</option>
+        </select>
+    </div>
+    <div class="input-field">
+        <textarea id="searchBox" class="materialize-textarea" placeholder="Type search terms here"></textarea>
+    </div>
+    <button id="goButton" class="btn waves-effect waves-light" disabled>GO</button>
+</div>
+<div class="results">
+    <table id="resultsTable" class="striped highlight responsive-table">
+        <thead>
+        <tr>
+            <th>Incident ID</th>
+            <th>Job Name</th>
+            <th>Work Details</th>
+            <th>Notes</th>
+            <th>Summary</th>
+            <th>Reported Date</th>
+            <th>Resolved Date</th>
+            <th>Resolution</th>
+            <th>Submit Date</th>
+            <th>Submitter Name</th>
+            <th>Submitter</th>
+            <th>Status</th>
+            <th>Assignee</th>
+            <th>Assigned Group</th>
+            <th>Flag</th>
+            <th>MQ</th>
+            <th>job</th>
+            <th>done</th>
+        </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+</div>
 </body>
 </html>

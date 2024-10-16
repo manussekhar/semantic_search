@@ -193,10 +193,7 @@ def search():
         )
         responses = []
         for response in results:
-            responses.append({
-                "id": response.id,
-                "metadata": response.payload
-            })
+            responses.append(response.payload)
 
         logger.info(f"Search completed successfully with {len(responses)} results.")
         return jsonify(responses)
