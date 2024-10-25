@@ -3,81 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Incident semantic search App</title>
-    <!-- Include Materialize CSS and JavaScript from CDN -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <title>Incident Semantic Search App</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-            color: #000000;
-            position: relative;
-            font-family: Arial, sans-serif;
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #000;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
         }
-        .container {
-            display: flex;
-            align-items: center;
-            margin-top: 20px;
-        }
-        .container > * {
-            margin: 0 10px;
-        }
-        .header-text {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            font-size: 18px;
-            color: #000000;
-        }
-        .results {
-            margin-top: 20px;
-            width: 80%;
-        }
-        table {
-            display: none; /* Initially hide the table */
-            border-collapse: collapse; /* Ensure borders are collapsed */
-        }
-        th, td {
-            border: 1px solid #cccccc; /* Add border to table cells */
-            padding: 10px;
-            text-align: left;
-        }
-        .preloader-wrapper {
-            display: none; /* Initially hide the preloader */
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
         }
     </style>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize Materialize components
-            M.AutoInit();
+            const spinner = document.getElementById('spinner');
+            const goButton = document.getElementById('goButton');
+            const searchBox = document.getElementById('searchBox');
+            const dropdown = document.getElementById('dropdown');
 
             // Clear the text area on page reload
-            document.getElementById('searchBox').value = '';
+            searchBox.value = '';
 
-            document.getElementById('searchBox').addEventListener('input', function() {
+            searchBox.addEventListener('input', function() {
                 if (this.value.trim() !== '') {
-                    document.getElementById('goButton').disabled = false;
+                    goButton.disabled = false;
                 } else {
-                    document.getElementById('goButton').disabled = true;
+                    goButton.disabled = true;
                 }
             });
 
-            document.getElementById('goButton').addEventListener('click', function() {
-                const selectedOption = document.getElementById('dropdown').value;
-                const searchText = document.getElementById('searchBox').value;
+            goButton.addEventListener('click', function() {
+                const selectedOption = dropdown.value;
+                const searchText = searchBox.value;
                 const url = `/search?${selectedOption}=${encodeURIComponent(searchText)}`;
 
-                // Show the preloader
-                document.querySelector('.preloader-wrapper').style.display = 'block';
+                // Show spinner and disable inputs
+                spinner.classList.remove('hidden');
+                goButton.disabled = true;
+                searchBox.disabled = true;
+                dropdown.disabled = true;
 
                 fetch(url)
                     .then(response => response.json())
@@ -87,114 +58,99 @@
 
                         data.forEach(item => {
                             const row = document.createElement('tr');
+                            row.classList.add('border-b', 'border-gray-200', 'hover:bg-gray-100'); // Add Tailwind classes to rows
                             const columns = [
                                 'Incident ID', 'Job Name', 'Work Details', 'Notes', 'Summary',
                                 'Reported Date', 'Resolved Date', 'Resolution', 'Submit Date',
                                 'Submitter Name', 'Submitter', 'Status', 'Assignee',
                                 'Assigned Group', 'Flag', 'MQ', 'job', 'done'
                             ];
-
                             columns.forEach(column => {
-                                const cellValue = item[column] === null ? '' : item[column];
                                 const cell = document.createElement('td');
-                                cell.textContent = cellValue;
-                                if (column === 'Incident ID') {
-                                    cell.style.cursor = 'pointer';
-                                    cell.addEventListener('click', function() {
-                                        const tempInput = document.createElement('input');
-                                        document.body.appendChild(tempInput);
-                                        tempInput.value = this.textContent;
-                                        tempInput.select();
-                                        document.execCommand('copy');
-                                        tempInput.remove();
-                                        alert('Incident ID copied: ' + this.textContent);
-                                    });
-                                }
+                                cell.textContent = item[column];
+                                cell.classList.add('p-2', 'text-center', 'border-r', 'border-gray-200'); // Add Tailwind classes to cells
                                 row.appendChild(cell);
                             });
-
                             tableBody.appendChild(row);
                         });
 
-                        // Show the table after data is loaded
-                        document.getElementById('resultsTable').style.display = 'table';
+                        // Hide spinner and enable inputs
+                        spinner.classList.add('hidden');
+                        goButton.disabled = false;
+                        searchBox.disabled = false;
+                        dropdown.disabled = false;
                     })
-                    .finally(() => {
-                        // Hide the preloader
-                        document.querySelector('.preloader-wrapper').style.display = 'none';
+                    .catch(error => {
+                        console.error('Error:', error);
+                        // Hide spinner and enable inputs in case of error
+                        spinner.classList.add('hidden');
+                        goButton.disabled = false;
+                        searchBox.disabled = false;
+                        dropdown.disabled = false;
                     });
             });
         });
     </script>
 </head>
-<body>
-<div class="header-text">Incident semantic search</div>
-<div class="container">
-    <div class="input-field">
-        <select id="dropdown" class="browser-default">
-            <option value="Job Name">Job Name</option>
-            <option value="Incident ID">Incident ID</option>
-            <option value="Work Details">Work Details</option>
-            <option value="Notes">Notes</option>
-            <option value="Summary">Summary</option>
-            <option value="Reported Date">Reported Date</option>
-            <option value="Resolved Date">Resolved Date</option>
-            <option value="Resolution">Resolution</option>
-            <option value="Submit Date">Submit Date</option>
-            <option value="Submitter Name">Submitter Name</option>
-            <option value="Submitter">Submitter</option>
-            <option value="Status">Status</option>
-            <option value="Assignee">Assignee</option>
-            <option value="Assigned Group">Assigned Group</option>
-            <option value="Flag">Flag</option>
-            <option value="MQ">MQ</option>
-            <option value="job">job</option>
-            <option value="done">done</option>
-        </select>
-    </div>
-    <div class="input-field">
-        <textarea id="searchBox" class="materialize-textarea" placeholder="Type search terms here"></textarea>
-    </div>
-    <button id="goButton" class="btn waves-effect waves-light" disabled>GO</button>
-</div>
-<div class="results">
-    <div class="preloader-wrapper big active">
-        <div class="spinner-layer spinner-blue-only">
-            <div class="circle-clipper left">
-                <div class="circle"></div>
-            </div><div class="gap-patch">
-            <div class="circle"></div>
-        </div><div class="circle-clipper right">
-            <div class="circle"></div>
+<body class="bg-gray-100 text-gray-900 h-screen">
+    <div class="container mx-auto p-4 h-full">
+        <h1 class="text-3xl font-bold mb-4">Incident Semantic Search App</h1>
+        <div class="flex space-x-4 mb-4">
+            <select id="dropdown" class="border border-gray-300 p-2 rounded">
+                <option value="Job Name">Job Name</option>
+                <option value="Incident ID">Incident ID</option>
+                <option value="Work Details">Work Details</option>
+                <option value="Notes">Notes</option>
+                <option value="Summary">Summary</option>
+                <option value="Reported Date">Reported Date</option>
+                <option value="Resolved Date">Resolved Date</option>
+                <option value="Resolution">Resolution</option>
+                <option value="Submit Date">Submit Date</option>
+                <option value="Submitter Name">Submitter Name</option>
+                <option value="Submitter">Submitter</option>
+                <option value="Status">Status</option>
+                <option value="Assignee">Assignee</option>
+                <option value="Assigned Group">Assigned Group</option>
+                <option value="Flag">Flag</option>
+                <option value="MQ">MQ</option>
+                <option value="job">job</option>
+                <option value="done">done</option>
+            </select>
+            <input id="searchBox" type="text" placeholder="Search..." class="border border-gray-300 p-2 rounded flex-grow">
+            <button id="goButton" class="bg-blue-500 text-white p-2 rounded disabled:opacity-50" disabled>Go</button>
         </div>
+        <div class="overflow-auto h-[95vh]">
+            <table id="resultsTable" class="min-w-full bg-white border border-gray-300">
+                <thead class="bg-gray-200">
+                    <tr>
+                        <th class="p-2 text-left border-r border-gray-300">Incident ID</th>
+                        <th class="p-2 text-left border-r border-gray-300">Job Name</th>
+                        <th class="p-2 text-left border-r border-gray-300">Work Details</th>
+                        <th class="p-2 text-left border-r border-gray-300">Notes</th>
+                        <th class="p-2 text-left border-r border-gray-300">Summary</th>
+                        <th class="p-2 text-left border-r border-gray-300">Reported Date</th>
+                        <th class="p-2 text-left border-r border-gray-300">Resolved Date</th>
+                        <th class="p-2 text-left border-r border-gray-300">Resolution</th>
+                        <th class="p-2 text-left border-r border-gray-300">Submit Date</th>
+                        <th class="p-2 text-left border-r border-gray-300">Submitter Name</th>
+                        <th class="p-2 text-left border-r border-gray-300">Submitter</th>
+                        <th class="p-2 text-left border-r border-gray-300">Status</th>
+                        <th class="p-2 text-left border-r border-gray-300">Assignee</th>
+                        <th class="p-2 text-left border-r border-gray-300">Assigned Group</th>
+                        <th class="p-2 text-left border-r border-gray-300">Flag</th>
+                        <th class="p-2 text-left border-r border-gray-300">MQ</th>
+                        <th class="p-2 text-left border-r border-gray-300">job</th>
+                        <th class="p-2 text-left border-r border-gray-300">done</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
         </div>
     </div>
-    <table id="resultsTable" class="striped highlight responsive-table">
-        <thead>
-        <tr>
-            <th>Incident ID</th>
-            <th>Job Name</th>
-            <th>Work Details</th>
-            <th>Notes</th>
-            <th>Summary</th>
-            <th>Reported Date</th>
-            <th>Resolved Date</th>
-            <th>Resolution</th>
-            <th>Submit Date</th>
-            <th>Submitter Name</th>
-            <th>Submitter</th>
-            <th>Status</th>
-            <th>Assignee</th>
-            <th>Assigned Group</th>
-            <th>Flag</th>
-            <th>MQ</th>
-            <th>job</th>
-            <th>done</th>
-        </tr>
-        </thead>
-        <tbody>
-        </tbody>
-    </table>
-</div>
+    <!-- Spinner -->
+    <div id="spinner" class="fixed inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75 hidden">
+        <div class="spinner"></div>
+    </div>
 </body>
 </html>
