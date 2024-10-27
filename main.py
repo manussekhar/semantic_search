@@ -7,6 +7,8 @@ import traceback
 import shutil
 import pandas as pd
 import os
+import hashlib
+
 from openai import OpenAI
 from qdrant_client import QdrantClient
 from qdrant_client import models
@@ -57,6 +59,9 @@ collections = [
 ]
 # Initialize cache
 embeddings_cache = {}
+
+# Cache dictionary to store responses
+insights_cache = {}
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -141,10 +146,26 @@ def update():
 
 @app.route("/insight", methods=["GET"])
 def insight():
-    resolutions = request.args.get("resolutions")
-    print("Received Resolutions:", resolutions)
+    resolutions = request.args.get('resolutions')
+    if not resolutions:
+        return {'status': 'error', 'message': 'No resolutions provided'}, 400
+
+    # Generate a hash key for the resolutions
+    resolutions_key = hashlib.md5(resolutions.encode()).hexdigest()
+
+    # Check if the response is already cached
+    if resolutions_key in insights_cache:
+        print('Returning cached response')
+        return jsonify({'status': 'success', 'resolutions': insights_cache[resolutions_key]})
+
+    # If not cached, process the resolutions
+    print('Processing new resolutions')
     combined_resolutions = callGPT(resolutions)
-    return jsonify({"status": "success", "resolutions": combined_resolutions})
+
+    # Cache the response
+    insights_cache[resolutions_key] = combined_resolutions
+
+    return jsonify({'status': 'success', 'resolutions': combined_resolutions})
 
 
 def callGPT(resolutions):
