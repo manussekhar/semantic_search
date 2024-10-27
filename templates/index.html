@@ -21,76 +21,6 @@
             }
         }
     </style>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const spinner = document.getElementById('spinner');
-            const goButton = document.getElementById('goButton');
-            const searchBox = document.getElementById('searchBox');
-            const dropdown = document.getElementById('dropdown');
-
-            // Clear the text area on page reload
-            searchBox.value = '';
-
-            searchBox.addEventListener('input', function() {
-                if (this.value.trim() !== '') {
-                    goButton.disabled = false;
-                } else {
-                    goButton.disabled = true;
-                }
-            });
-
-            goButton.addEventListener('click', function() {
-                const selectedOption = dropdown.value;
-                const searchText = searchBox.value;
-                const url = `/search?${selectedOption}=${encodeURIComponent(searchText)}`;
-
-                // Show spinner and disable inputs
-                spinner.classList.remove('hidden');
-                goButton.disabled = true;
-                searchBox.disabled = true;
-                dropdown.disabled = true;
-
-                fetch(url)
-                    .then(response => response.json())
-                    .then(data => {
-                        const tableBody = document.getElementById('resultsTable').querySelector('tbody');
-                        tableBody.innerHTML = '';
-
-                        data.forEach(item => {
-                            const row = document.createElement('tr');
-                            row.classList.add('border-b', 'border-gray-200', 'hover:bg-gray-100'); // Add Tailwind classes to rows
-                            const columns = [
-                                'Incident ID', 'Job Name', 'Work Details', 'Notes', 'Summary',
-                                'Reported Date', 'Resolved Date', 'Resolution', 'Submit Date',
-                                'Submitter Name', 'Submitter', 'Status', 'Assignee',
-                                'Assigned Group', 'Flag', 'MQ', 'job', 'done'
-                            ];
-                            columns.forEach(column => {
-                                const cell = document.createElement('td');
-                                cell.textContent = item[column];
-                                cell.classList.add('p-2', 'text-center', 'border-r', 'border-gray-200'); // Add Tailwind classes to cells
-                                row.appendChild(cell);
-                            });
-                            tableBody.appendChild(row);
-                        });
-
-                        // Hide spinner and enable inputs
-                        spinner.classList.add('hidden');
-                        goButton.disabled = false;
-                        searchBox.disabled = false;
-                        dropdown.disabled = false;
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        // Hide spinner and enable inputs in case of error
-                        spinner.classList.add('hidden');
-                        goButton.disabled = false;
-                        searchBox.disabled = false;
-                        dropdown.disabled = false;
-                    });
-            });
-        });
-    </script>
 </head>
 <body class="bg-gray-100 text-gray-900 h-screen">
     <div class="container mx-auto p-4 h-full">
@@ -118,11 +48,13 @@
             </select>
             <input id="searchBox" type="text" placeholder="Search..." class="border border-gray-300 p-2 rounded flex-grow">
             <button id="goButton" class="bg-blue-500 text-white p-2 rounded disabled:opacity-50" disabled>Go</button>
+            <button id="insightButton" class="bg-green-500 text-white p-2 rounded hidden">INSIGHT</button>
         </div>
         <div class="overflow-auto h-[95vh]">
             <table id="resultsTable" class="min-w-full bg-white border border-gray-300">
                 <thead class="bg-gray-200">
                     <tr>
+                        <th class="p-2 text-left border-r border-gray-300">Select</th>
                         <th class="p-2 text-left border-r border-gray-300">Incident ID</th>
                         <th class="p-2 text-left border-r border-gray-300">Job Name</th>
                         <th class="p-2 text-left border-r border-gray-300">Work Details</th>
@@ -152,5 +84,17 @@
     <div id="spinner" class="fixed inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75 hidden">
         <div class="spinner"></div>
     </div>
+    <!-- Modal -->
+    <div id="modal" class="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75 hidden">
+        <div class="bg-white p-8 rounded-lg max-w-3xl w-full relative">
+            <button id="closeModal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+            <div id="modalContent" class="text-gray-900"></div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
